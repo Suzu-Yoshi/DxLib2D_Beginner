@@ -1,5 +1,6 @@
 /*--+----1----+----2----+----3----+----4----+----5--//-+----6----+----7----+----8----+----9----+---*/
 /* 01.cpp     																					   */
+/* はじめてのDxLib    																			   */
 
 //▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 
@@ -29,7 +30,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	if (DxLib_Init() == -1) { return -1; }						//ＤＸライブラリ初期化処理
 
-	DrawString(GAME_WIDTH / 2, GAME_HEIGHT / 2, "Hello World", GetColor(255, 255, 255));	//文字を描画
+	int DrawX = 0;	//表示位置X
+	int DrawY = 0;	//表示位置Y
+
+	DrawString(DrawX, DrawY, "Hello World", GetColor(255, 255, 255));	//文字を描画
 
 	WaitKey();			//キー入力待ち
 

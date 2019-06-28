@@ -39,6 +39,13 @@ char AllKeyState[256];			//すべてのキーの状態が入る
 //シーン関連
 int GameSceneNow = (int)GAME_SCENE_TITLE;	//最初のゲーム画面をタイトルに設定
 
+//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+
+//ウィンドウプロシージャ関連
+BOOL IsWM_CREATE = FALSE;				//WM_CREATEが正常に動作したか判断する
+
+//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
 //########## プロトタイプ宣言 ##########
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
 VOID MY_FPS_DRAW(VOID);				//FPS値を描画する関数
@@ -49,6 +56,12 @@ VOID MY_ALL_KEYDOWN_UPDATE(VOID);	//キーの入力状態を更新する関数
 VOID MY_GAME_TITLE(VOID);			//タイトル画面の関数
 VOID MY_GAME_PLAY(VOID);			//プレイ画面の関数
 VOID MY_GAME_END(VOID);				//エンド画面の関数
+
+//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+
+LRESULT CALLBACK MY_WNDPROC(HWND, UINT, WPARAM, LPARAM);		//自作ウィンドウプロシージャ
+
+//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 //########## プログラムで最初に実行される関数 ##########
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -200,12 +213,12 @@ VOID MY_GAME_PLAY(VOID)
 {
 
 	//■■■■■ プログラム削除ここから ■■■■■■■■■■■■■■■■■■■■
-	//if (AllKeyState[KEY_INPUT_SPACE] != 0)	//スペースーキーが押されていた時
-	//{
-	//	GameSceneNow = (int)GAME_SCENE_END;	//シーンをエンド画面にする
-	//}
+	if (AllKeyState[KEY_INPUT_SPACE] != 0)	//スペースーキーが押されていた時
+	{
+		GameSceneNow = (int)GAME_SCENE_END;	//シーンをエンド画面にする
+	}
 
-	//DrawString(0, 0, "プレイ画面(スペースキーを押してください)", GetColor(255, 255, 255));
+	DrawString(0, 0, "プレイ画面(スペースキーを押してください)", GetColor(255, 255, 255));
 	//■■■■■ プログラム削除ここまで ■■■■■■■■■■■■■■■■■■■■
 
 	return;
@@ -223,3 +236,45 @@ VOID MY_GAME_END(VOID)
 
 	return;
 }
+
+//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+
+//########## ウィンドウプロシージャ関数 ##########
+LRESULT CALLBACK MY_WNDPROC(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+	switch (msg)
+	{
+
+	case WM_CREATE:	//ウィンドウの生成＆初期化
+
+		IsWM_CREATE = TRUE;	//WM_CREATE正常終了
+		return 0;
+
+	case WM_CLOSE:		//閉じるボタンを押したとき
+
+		MessageBox(hwnd, TEXT("ゲームを終了します"), TEXT("終了メッセージ"), MB_OK);
+		break;
+
+	case WM_RBUTTONDOWN:	//マウスの右ボタンを押したとき
+
+		SendMessage(hwnd, WM_CLOSE, 0, 0);		//WM_CLOSEメッセージをキューに追加
+		break;
+
+	case WM_LBUTTONDOWN:	//マウスの左ボタンを押したとき
+
+							//WM_NCLBUTTONDOWN(タイトルバーでマウスの左ボタンを押した)メッセージをすぐに発行
+		PostMessage(hwnd, WM_NCLBUTTONDOWN, (WPARAM)HTCAPTION, lp);
+		break;
+
+	case WM_DESTROY:	//ウィンドウが破棄された(なくなった)とき
+
+		
+		PostQuitMessage(0);		//メッセージキューに WM_QUIT を送る
+		return 0;
+	}
+
+	//デフォルトのウィンドウプロシージャ関数を呼び出す
+	return DefWindowProc(hwnd, msg, wp, lp);
+}
+
+//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
