@@ -1,5 +1,6 @@
-/*--+----1----+----2----+----3----+----4----+----5--//-+----6----+----7----+----8----+----9----+---*/
+/*--+----1----+----2----+----3----+----4----+----5-----+----6----+----7----+----8----+----9----+---*/
 /* 04.cpp     																					   */
+/* シーンの追加																				   */
 
 //########## ヘッダーファイル読み込み ##########
 #include "DxLib.h"
@@ -17,14 +18,7 @@
 #define SET_WINDOW_ST_MODE_TITLE_FLAME_NONE	2	//タイトルバーとフレームなし
 #define SET_WINDOW_ST_MODE_FLAME_NONE		3	//フレームなし
 
-#define GAME_FPS_SPEED					   60
-
-//########## 列挙型 ##########
-enum GAME_SCENE {
-	GAME_SCENE_TITLE,	//タイトル画面
-	GAME_SCENE_PLAY,	//プレイ画面
-	GAME_SCENE_END		//エンド画面
-};
+#define GAME_FPS_SPEED					   60	//FPSの設定
 
 //########## グローバル変数 ##########
 //FPS関連
@@ -33,100 +27,65 @@ int CountFps;							//カウンタ
 float CalcFps;							//計算結果
 int SampleNumFps = GAME_FPS_SPEED;		//平均を取るサンプル数
 
-//キーボード関連
+//文字の位置
+int DrawX = 0;	//表示位置X
+int DrawY = 0;	//表示位置Y
+
+char DrawMojiRetsu[64] = { '\0' };	//描画する文字列
+int DrawWidth = 0;					//文字列の幅を取得
+int DrawHeight = 0;					//フォントのサイズ(文字列の高さ)を取得
+
+//キー状態を取得
 char AllKeyState[256];			//すべてのキーの状態が入る
-
-//シーン関連
-int GameSceneNow = (int)GAME_SCENE_TITLE;	//最初のゲーム画面をタイトルに設定
-
-//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-
-//ウィンドウプロシージャ関連
-BOOL IsWM_CREATE = FALSE;				//WM_CREATEが正常に動作したか判断する
-
-//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 //########## プロトタイプ宣言 ##########
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
 VOID MY_FPS_DRAW(VOID);				//FPS値を描画する関数
 VOID MY_FPS_WAIT(VOID);				//FPS値を計測し、待つ関数
+VOID MY_PLAY_DRAW(VOID);			//ゲーム画面を描画
 
 VOID MY_ALL_KEYDOWN_UPDATE(VOID);	//キーの入力状態を更新する関数
-
-VOID MY_GAME_TITLE(VOID);			//タイトル画面の関数
-VOID MY_GAME_PLAY(VOID);			//プレイ画面の関数
-VOID MY_GAME_END(VOID);				//エンド画面の関数
-
-//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-
-LRESULT CALLBACK MY_WNDPROC(HWND, UINT, WPARAM, LPARAM);		//自作ウィンドウプロシージャ
-
-//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+VOID MY_PLAY_DRAW_INFO(VOID);		//ゲーム画面の情報を描画
+VOID MY_PLAY_OPERATION(VOID);		//ゲーム画面での操作
 
 //########## プログラムで最初に実行される関数 ##########
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	ChangeWindowMode(GAME_WINDOW_MODECHANGE);					//ウィンドウモードに設定
 	SetGraphMode(GAME_WIDTH, GAME_HEIGHT, GAME_COLOR);			//指定の数値で画面を表示する
-	
-	SetWindowStyleMode(SET_WINDOW_ST_MODE_DEFAULT);				//タイトルバーなし
-
+	SetWindowStyleMode(SET_WINDOW_ST_MODE_TITLE_NONE);			//タイトルバーなし
 	SetMainWindowText(TEXT(GAME_WINDOW_NAME));					//タイトルの文字
 
-	//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-
-	//フック→WM_CLOSEなどのメッセージを引っ掛けて取得する
-	SetHookWinProc(MY_WNDPROC);	//ウィンドウプロシージャの設定
-
-	//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
 	if (DxLib_Init() == -1) { return -1; }						//ＤＸライブラリ初期化処理
+	SetDrawScreen(DX_SCREEN_BACK);								//[DxLib_Init()の後]裏画面に描画(ダブルバッファリング)
 
-	SetDrawScreen(DX_SCREEN_BACK);								//Draw系関数は裏画面に描画
+	sprintf(DrawMojiRetsu, "Hello World");									//文字列を整形(コピー)
+	DrawWidth = GetDrawStringWidth(DrawMojiRetsu, strlen(DrawMojiRetsu));	//文字列の幅を取得
+	DrawHeight = GetFontSize();												//フォントのサイズ(文字列の高さ)を取得
+	DrawX = GAME_WIDTH / 2 - DrawWidth / 2;									//画面の中央（X位置）
+	DrawY = GAME_HEIGHT / 2 - DrawHeight / 2;								//画面の中央（Y位置）
 
 	//無限ループ
 	while (TRUE)
 	{
 		if (ProcessMessage() != 0) { break; }	//メッセージ処理の結果がエラーのとき、強制終了
-
 		if (ClearDrawScreen() != 0) { break; }	//画面を消去できなかったとき、強制終了
 
-		MY_ALL_KEYDOWN_UPDATE();				//キーの状態を取得
+		MY_ALL_KEYDOWN_UPDATE();				//押しているキー状態を取得
 
-		//シーン選択
-		switch (GameSceneNow)
-		{
-		case (int)GAME_SCENE_TITLE:	//タイトル画面の処理ここから
+		MY_FPS_UPDATE();	//FPSの処理[更新]
 
-			MY_GAME_TITLE();	//タイトル画面の処理
+		MY_PLAY_OPERATION();	//ゲーム画面での操作
 
-			break;	//タイトル画面の処理ここまで
+		MY_PLAY_DRAW();			//ゲーム画面を描画
 
-		case (int)GAME_SCENE_PLAY:	//プレイ画面の処理ここから
+		MY_PLAY_DRAW_INFO();	//ゲーム画面の情報を描画	
 
-			MY_GAME_PLAY();		//プレイ画面の処理
+		MY_FPS_DRAW();			//FPSの処理[描画]
 
-			break;	//プレイ画面の処理ここまで
+		ScreenFlip();			//モニタのリフレッシュレートの速さで裏画面を再描画
 
-		case (int)GAME_SCENE_END:	//エンド画面の処理ここから
-
-			MY_GAME_END();		//エンド画面の処理
-
-			break;	//エンド画面の処理ここまで
-
-		default:
-
-			break;
-
-		}
-
-		MY_FPS_UPDATE();						//FPSの処理[更新]
-
-		MY_FPS_DRAW();		//FPSの処理[描画]
-
-		ScreenFlip();		//モニタのリフレッシュレートの速さで裏画面を再描画
-
-		MY_FPS_WAIT();		//FPSの処理[待つ]
+		MY_FPS_WAIT();			//FPSの処理[待つ]
 	}
 
 	DxLib_End();		//ＤＸライブラリ使用の終了処理
@@ -153,6 +112,7 @@ VOID MY_FPS_UPDATE(VOID)
 	return;
 }
 
+
 //########## FPS値を描画する関数 ##########
 VOID MY_FPS_DRAW(VOID)
 {
@@ -169,8 +129,25 @@ VOID MY_FPS_WAIT(VOID)
 
 	if (waitTime > 0)		//指定のFPS値よりも早い場合
 	{
-		Sleep(waitTime);	//待つ
+		Sleep(waitTime);	//待機
 	}
+	return;
+}
+
+//########## ゲーム画面を描画する関数 ##########
+VOID MY_PLAY_DRAW(VOID)
+{
+	DrawString(DrawX, DrawY, "Hello World", GetColor(255, 255, 255));	//文字を描画
+
+	DrawBox(DrawX, DrawY, DrawX + DrawWidth, DrawY + DrawHeight, GetColor(255, 0, 0), FALSE);	//四角を描画(TRUEは塗りつぶし)
+
+	return;
+}
+
+//########## ゲーム画面の情報を描画する関数 ##########
+VOID MY_PLAY_DRAW_INFO(VOID)
+{
+	DrawFormatString(0, 0, GetColor(255, 255, 255), "X:%04d / Y:%04d ", DrawX, DrawY);		//文字を描画
 	return;
 }
 
@@ -195,86 +172,28 @@ VOID MY_ALL_KEYDOWN_UPDATE(VOID)
 	return;
 }
 
-//########## タイトル画面の関数 ##########
-VOID MY_GAME_TITLE(VOID)
+//########## ゲーム画面での操作を行う関数 ##########
+VOID MY_PLAY_OPERATION(VOID)
 {
-	if (AllKeyState[KEY_INPUT_RETURN] != 0)	//エンターキーが押されていた時
+	if (AllKeyState[KEY_INPUT_UP] != 0)				//上矢印キーが押されているとき
 	{
-		GameSceneNow = (int)GAME_SCENE_PLAY;	//シーンをプレイ画面にする
+		DrawY--;	//上に移動
 	}
 
-	DrawString(0, 0, "タイトル画面(エンターキーを押してください)", GetColor(255, 255, 255));
+	if (AllKeyState[KEY_INPUT_DOWN] != 0)			//下矢印キーが押されているとき
+	{
+		DrawY++;	//下に移動
+	}
+
+	if (AllKeyState[KEY_INPUT_LEFT] != 0)				//左矢印キーが押されているとき
+	{
+		DrawX--;	//左に移動
+	}
+
+	if (AllKeyState[KEY_INPUT_RIGHT] != 0)			//右矢印キーが押されているとき
+	{
+		DrawX++;	//右に移動
+	}
 
 	return;
 }
-
-//########## プレイ画面の関数 ##########
-VOID MY_GAME_PLAY(VOID)
-{
-
-	//■■■■■ プログラム削除ここから ■■■■■■■■■■■■■■■■■■■■
-	if (AllKeyState[KEY_INPUT_SPACE] != 0)	//スペースーキーが押されていた時
-	{
-		GameSceneNow = (int)GAME_SCENE_END;	//シーンをエンド画面にする
-	}
-
-	DrawString(0, 0, "プレイ画面(スペースキーを押してください)", GetColor(255, 255, 255));
-	//■■■■■ プログラム削除ここまで ■■■■■■■■■■■■■■■■■■■■
-
-	return;
-}
-
-//########## エンド画面の関数 ##########
-VOID MY_GAME_END(VOID)
-{
-	if (AllKeyState[KEY_INPUT_BACK] != 0)	//バックスペースーキーが押されていた時
-	{
-		GameSceneNow = (int)GAME_SCENE_TITLE;	//シーンをタイトル画面にする
-	}
-
-	DrawString(0, 0, "エンド画面(バックスペースキーを押してください)", GetColor(255, 255, 255));
-
-	return;
-}
-
-//▼▼▼▼▼ プログラム追加ここから ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-
-//########## ウィンドウプロシージャ関数 ##########
-LRESULT CALLBACK MY_WNDPROC(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
-{
-	switch (msg)
-	{
-
-	case WM_CREATE:	//ウィンドウの生成＆初期化
-
-		IsWM_CREATE = TRUE;	//WM_CREATE正常終了
-		return 0;
-
-	case WM_CLOSE:		//閉じるボタンを押したとき
-
-		MessageBox(hwnd, TEXT("ゲームを終了します"), TEXT("終了メッセージ"), MB_OK);
-		break;
-
-	case WM_RBUTTONDOWN:	//マウスの右ボタンを押したとき
-
-		SendMessage(hwnd, WM_CLOSE, 0, 0);		//WM_CLOSEメッセージをキューに追加
-		break;
-
-	case WM_LBUTTONDOWN:	//マウスの左ボタンを押したとき
-
-							//WM_NCLBUTTONDOWN(タイトルバーでマウスの左ボタンを押した)メッセージをすぐに発行
-		PostMessage(hwnd, WM_NCLBUTTONDOWN, (WPARAM)HTCAPTION, lp);
-		break;
-
-	case WM_DESTROY:	//ウィンドウが破棄された(なくなった)とき
-
-		
-		PostQuitMessage(0);		//メッセージキューに WM_QUIT を送る
-		return 0;
-	}
-
-	//デフォルトのウィンドウプロシージャ関数を呼び出す
-	return DefWindowProc(hwnd, msg, wp, lp);
-}
-
-//▲▲▲▲▲ プログラム追加ここまで ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
