@@ -25,7 +25,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	ChangeWindowMode(GAME_WINDOW_MODECHANGE);					//ウィンドウモードに設定
 	SetGraphMode(GAME_WIDTH, GAME_HEIGHT, GAME_COLOR);			//指定の数値で画面を表示する
-	SetWindowStyleMode(SET_WINDOW_ST_MODE_DEFAULT);				//タイトルバーなし
+	SetWindowStyleMode(SET_WINDOW_ST_MODE_TITLE_NONE);			//タイトルバーなし
 	SetMainWindowText(TEXT(GAME_WINDOW_NAME));					//タイトルの文字
 
 	if (DxLib_Init() == -1) { return -1; }						//ＤＸライブラリ初期化処理
